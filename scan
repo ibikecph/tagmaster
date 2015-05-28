@@ -1,0 +1,65 @@
+#!/usr/bin/ruby
+
+# TAGP scanner for use with TagMaster RFID readers.
+# The antennas/readers connect to the server via TCP and the TAGP protocol and transmits events as they happen.
+# The script looks for unique tag ID's and shows them as they're found.
+# It will also save the list of tags to a file.
+
+# There is a problem with lost connections that causes more and more sockets to be left open.
+# Eventurally this results in the script failing. A workaround is to restart the script regularly, like once a day.
+
+# Number of open files can be checked using;
+# pa aux                # find process
+# lsof -p 667           # show open files
+# lsof -p 667 | wc -l   # count open files
+
+require 'rubygems'
+require './server'
+
+PORT = 9999
+FILE = "ids.txt"
+
+
+module Tagp
+  class Scanner < Server
+
+    def initialize port
+      super port
+      log "Warning: #{FILE} already exists, cannot save unique ids." if File.exists? FILE
+      @scanned = {}
+    end
+    
+    def event connection, event
+      #log "#{format_info(now, remote_ip, remote_port, line)} --> EVNT #{event.key.ljust(35)} lag:#{event.lag}"
+      unless @scanned[event.key]
+        @scanned[event.key] = 1
+        log "#{@scanned.size.to_s.ljust 8} #{event.key}"
+      else
+        @scanned[event.key] += 1
+      end
+    end
+
+    def starting
+      log "[#{format_time Time.now}] Looking for unique ids..."
+    end
+
+    def dump
+      str = ""
+      unless File.exists? FILE
+        File.open(FILE,'w') { |file| file.write str }
+      else
+        log "Cannot write list of ids, since file #{FILE} aready exists."
+        #@scanned.sort_by { |k,v| v }.reverse.each do |t|
+        #  k = t[0]
+        #  v = t[1]
+        #  str << "#{k[0].ljust 12} #{k[1].to_s(16).ljust 30} #{v.to_s.ljust 10}\n"      
+        #end
+      end
+      log str
+    end
+      
+  end
+end
+
+# run until stopped
+Tagp::Scanner.new(PORT).run

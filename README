@@ -1,0 +1,19 @@
+
+
+Ruby tools for receiving data from TagMaster RFID tag readers. 
+
+
+tagp
+The script can be used a server, which:
+- speaks the tagp protocol
+- receives data from multiple reeaders
+- logs events
+- distributes events to a secondary server via a JSON api
+
+
+
+scan
+The script can be used to scan unique tag ids, which can be useful beofre distributing tags.
+- speaks the tagp protocol
+- receives data from multiple reeaders
+- logs unique tag ids
