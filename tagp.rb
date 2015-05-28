@@ -1,6 +1,6 @@
-require './event'
-require './error'
-require './logger'
+require_relative 'event'
+require_relative 'error'
+require_relative 'logger'
 
 module Tagp
   class Tagp

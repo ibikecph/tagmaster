@@ -14,9 +14,9 @@
 # lsof -p 667 | wc -l   # count open files
 
 require 'rubygems'
-require './server'
-require './distributor'
 require 'yaml'
+require_relative 'server'
+require_relative 'distributor'
 
 module Tagp
   class Backend < Server

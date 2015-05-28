@@ -1,5 +1,5 @@
 require 'socket'
-require './tagp'
+require_relative 'tagp'
 
 module Tagp
   class Server

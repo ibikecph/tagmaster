@@ -15,7 +15,7 @@
 # lsof -p 667 | wc -l   # count open files
 
 require 'rubygems'
-require './server'
+require_relative 'server'
 
 PORT = 9999
 FILE = "ids.txt"
