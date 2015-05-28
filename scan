@@ -1,4 +1,5 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
+#note: the shebang above expects ruby to be intalled through rbenv
 
 # TAGP scanner for use with TagMaster RFID readers.
 # The antennas/readers connect to the server via TCP and the TAGP protocol and transmits events as they happen.
