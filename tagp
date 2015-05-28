@@ -32,17 +32,17 @@ module Tagp
       raise "Post timeout settings is missing" unless @settings["post_timeout"]
 
       super @settings["port"]
-      @distributor = Distributor.new(settings)
+      @distributor = Distributor.new(@settings)
       @distributor.start
     end
     
     def accept? connection
-      IP_TO_LOCATION.include? connection[:ip]
+      @settings["locations"].include? connection[:ip]
     end
 
     def event connection, e
       super connection, e
-      location = settings[:locations][connection[:ip]]
+      location = @settings["locations"][connection[:ip]]
       @distributor.enqueue [location,format_time(e.timestamp), e.type, e.id_hex ]
     end
     
