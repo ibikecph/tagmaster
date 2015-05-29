@@ -51,7 +51,9 @@ end
 
 
 # load settings
-settings = YAML.load_file('./tagp.yml')
+dir = File.dirname(__FILE__)
+path = File.expand_path File.join(dir,'tagp.yml')
+settings = YAML.load_file(path)
 
 # run until stopped
 Tagp::Backend.new(settings).run
