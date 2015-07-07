@@ -1,3 +1,6 @@
+require 'digest/sha1'
+
+
 module Tagp  
   class Event
 
@@ -16,8 +19,9 @@ module Tagp
     end
 
     def parse
-      formatbits = @data[1] & 0x3F
-      if formatbits == 0b111101
+      return if @data.size < 2
+      @formatbits = @data[1] & 0x3F
+      if @formatbits == 0b111101
         parse_openlen
       else
         parse_fixedlen
@@ -44,21 +48,23 @@ module Tagp
         parse_scripttag
       end
 
-      if formatbits >= 0 && formatbits <= 0b111100
+      if @formatbits >= 0 && @formatbits <= 0b111100
         parse_mark28
-      elsif formatbits == 0b111111
+      elsif @formatbits == 0b111111
         parse_open32
-      elsif formatbits == 0b111110
+      elsif @formatbits == 0b111110
         parse_open48
       else
         # should never happen, since we've covered all values 0-255
-        raise TagError.new @data, formatbits
+        raise TagError.new @data, @formatbits
       end
     end
 
     def parse_marktag
       @subtype = "MarkTag"
-      @status = ((@data[8] << 6) | (@data[9] >> 2)) & 0xFE
+      if @data.size>=10
+        @status = ((@data[8] << 6) | (@data[9] >> 2)) & 0xFE
+      end
     end
 
     def parse_scriptag
@@ -70,16 +76,19 @@ module Tagp
     end
 
     def parse_mark28
+      raise TagError.new @data, @formatbits unless @data.size>=5      
       @type = "Mark28"
       @id = ((@data[1] & 0x3f) << 22) | (@data[2] << 14) | (@data[3] << 6) | ((@data[4] & 0xfc) >> 2)    
     end
 
     def parse_open32
+      raise TagError.new @data, @formatbits unless @data.size>=5      
       @type = "Open32"
       @id = (@data[0] << 24) | ((@data[1] & 0xC0) << 16) | (@data[2] << 14) | (@data[3] << 6) | ((@data[4] & 0xFC) >> 2)
     end
 
     def parse_open48
+      raise TagError.new @data, @formatbits unless @data.size>=7    
       @type = "Open48"
       @id = (@data[0] << 40) | ((@data[1] & 0xC0) << 32) | (@data[2] << 30) | (@data[3] << 22) | (@data[4] << 14) | (@data[5] << 6) | ((@data[6] & 0xFC) >> 2)
     end
@@ -91,7 +100,11 @@ module Tagp
     def key
       "#{@type}:#{id_hex}"
     end
-
+    
+    def encrypted_id salt
+      Digest::SHA1.hexdigest "#{key}:#{salt}"
+    end
+    
   end
 
   class EventTag < Event
