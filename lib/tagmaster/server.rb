@@ -1,7 +1,8 @@
 require 'socket'
-require_relative 'tagp'
+require_relative 'logger'
+require_relative 'distributor'
 
-module Tagp
+module TagMaster
   class Server
     include Logger
     
@@ -92,4 +93,33 @@ module Tagp
     end
 
   end
+
+
+  class Backend < Server
+    def initialize settings
+      @settings = settings
+      raise "Settings is empty" unless @settings
+      raise "Port settings is missing" unless @settings["port"]
+      raise "Locations settings is missing" unless @settings["locations"]
+      raise "Locations settings is empty" unless @settings["locations"].is_a?(Hash) && @settings["locations"].size>0
+      raise "Endpoint settings is missing" unless @settings["endpoint"]
+      raise "Retry delay settings is missing" unless @settings["retry_delay"]
+      raise "Post timeout settings is missing" unless @settings["post_timeout"]
+
+      super @settings["port"]
+      @distributor = Distributor.new(@settings)
+      @distributor.start
+    end
+    
+    def accept? connection
+      @settings["locations"].include? connection[:ip]
+    end
+
+    def event connection, e
+      super connection, e
+      location = @settings["locations"][connection[:ip]]
+      @distributor.enqueue [location,format_time(e.timestamp), e.type, e.id_hex ]
+    end
+  end
+  
 end

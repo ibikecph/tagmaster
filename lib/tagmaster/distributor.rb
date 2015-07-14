@@ -2,7 +2,7 @@ require 'net/http'
 require 'thread'
 require 'json'
 
-module Tagp
+module TagMaster
   class Distributor
     include Logger
     

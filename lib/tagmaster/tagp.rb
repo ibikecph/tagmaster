@@ -1,23 +1,21 @@
-require_relative 'event'
-require_relative 'error'
-require_relative 'logger'
+require_relative 'event.rb'
+require_relative 'error.rb'
+require_relative 'logger.rb'
 
-module Tagp
+module TagMaster
   class Tagp
     
     def self.parse line, now
-      if line =~ /^EVNTTAG (\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})([^;]+)(;(.*))?/
+      if line =~ /^EVNTTAG (\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})([^;\s]+)(;(.*))?$/
         year, month, day, hour, minute, second, millisecond =
           $1.to_i, $2.to_i, $3.to_i, $4.to_i, $5.to_i, $6.to_i, $7.to_i
-        EventTag.new now: now, data: decode_data($8), metadata: $10, line: line,
-          timestamp: Time.local(year, month, day, hour, minute, second, millisecond*1000)
-      elsif line =~ /^EVNTGONE(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})(.*);(.*)/
+        time = Time.utc(year, month, day, hour, minute, second, millisecond*1000)
+        EventTag.new now: now, data: decode_data($8), metadata: $10, line: line, timestamp: time
+      elsif line =~ /^EVNTGONE(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})(.*);(.*)$/
         year, month, day, hour, minute, second, millisecond =
           $1.to_i, $2.to_i, $3.to_i, $4.to_i, $5.to_i, $6.to_i, $7.to_i
-        EventGone.new now: now, data: decode_data($8), count: $9, line: line,
-          timestamp: Time.local(year, month, day, hour, minute, second, millisecond*1000)
-      else
-        #puts 'not recognized'
+        time = Time.utc(year, month, day, hour, minute, second, millisecond*1000)
+        EventGone.new now: now, data: decode_data($8), count: $9, line: line, timestamp: time
       end
     end
     

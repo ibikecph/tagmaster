@@ -1,4 +1,4 @@
-module Tagp
+module TagMaster
 	class TagError < RuntimeError
 		attr_reader :data, :formatbits
 		def initialize data, formatbits

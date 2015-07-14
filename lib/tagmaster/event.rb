@@ -1,7 +1,7 @@
 require 'digest/sha1'
 
 
-module Tagp  
+module TagMaster  
   class Event
 
     attr_reader :type, :id, :status, :control, :user_data, :data, :metadata, :timestamp, :lag, :line

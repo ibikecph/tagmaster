@@ -21,7 +21,7 @@ PORT = 9999
 FILE = "ids.txt"
 
 
-module Tagp
+module TagMaster
   class Scanner < Server
 
     def initialize port

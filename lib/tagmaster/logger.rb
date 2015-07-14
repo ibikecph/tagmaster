@@ -1,4 +1,4 @@
-module Tagp
+module TagMaster
   module Logger
     def err str
       $stderr.puts str

@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+#note: the shebang above expects ruby to be intalled through rbenv
+
+# TAGP receiver/distributor for use with TagMaster RFID readers.
+# The antennas/readers connect to the server via TCP and the TAGP protocol and transmits events as they happen.
+# The server then queues the events and passes them to a separate receiver.
+
+# There is a problem with lost connections that causes more and more sockets to be left open.
+# Eventurally this results in the script failing. A workaround is to restart the script regularly, like once a day.
+
+# Number of open files can be checked using;
+# pa aux                # find process
+# lsof -p 667           # show open files
+# lsof -p 667 | wc -l   # count open files
+
+require 'rubygems'
+require 'yaml'
+require_relative '../lib/tagmaster/server'
+require_relative '../lib/tagmaster/distributor'
+
+
+# load settings
+dir = Dir.pwd
+path = File.expand_path File.join(dir,'tagp.yml')
+settings = YAML.load_file(path)
+
+# run until stopped
+TagMaster::Backend.new(settings).run
