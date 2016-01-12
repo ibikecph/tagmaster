@@ -14,7 +14,7 @@ RSpec.describe TagMaster::Tagp do
       expect(result).to be_a(TagMaster::EventTag)
 
       expect(result.line).to eq(event)
-      expect(result.timestamp.to_f).to eq(1169130860.957)
+      expect(result.timestamp.to_f).to eq(1169127260.957)
       expect(result.data).to eq([0x04, 0x02, 0xBC, 0x94, 0xBA, 0x15, 0xE3, 0xAA, 0x08, 0x00, 0x7F, 0x00])
       expect(result.id).to eq(11478318)
       expect(result.type).to eq('Mark28')

@@ -14,7 +14,7 @@ module TagMaster
       @line = h[:line]
       
       lag = h[:now] - @timestamp
-      @lag = (lag*1000.0).round / 1000.0   # ruby 1.8 does not support round(3)
+      @lag = lag.round(3)
       parse
     end
 

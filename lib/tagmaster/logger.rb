@@ -24,9 +24,7 @@ module TagMaster
     end
 
     def format_time t
-      fraction = t.to_f - t.to_i
-      millisecond = (fraction*1000).round
-      "#{t.strftime("%F %T")}.#{sprintf('%.3d', millisecond)}"
+      t.strftime('%Y-%m-%d %H:%M:%S.%L %z')
     end
   end
 end

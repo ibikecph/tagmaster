@@ -93,7 +93,7 @@ module TagMaster
     end
 
     def rejected connection, e
-      log "#{format_event(connection, e)} --> RCJT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
+      log "#{format_event(connection, e)} --> RJCT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
     end
 
     def not_understood connection
