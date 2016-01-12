@@ -1,7 +1,0 @@
-port: 9999
-endpoint: "http://someserver.com/tags/create.json"
-retry_delay: 5
-post_timeout: 5
-locations:
-  "111.111.111.111": 0
-  "222.222.222.222" : 1

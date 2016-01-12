@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+#note: the shebang above expects ruby to be intalled through rbenv
+
+# Reads log files generates by tagserver, and outputs statistics about them
+
+require 'rubygems'
+require 'yaml'
+require_relative '../lib/tagmaster'
+
+
+# load settings
+dir = Dir.pwd
+
+path = ARGV.first || 'tagmaster.yml'
+path = File.expand_path File.join(dir,path)
+settings = YAML.load_file(path)
+
+# run until stopped
+importer =TagMaster::Import.new(settings)
+importer.run ARGV[1]
+
+importer.sort
+importer.output
+

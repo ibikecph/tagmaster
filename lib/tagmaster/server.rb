@@ -1,13 +1,16 @@
 require 'socket'
+require 'date'
+require_relative 'tagp'
 require_relative 'logger'
 require_relative 'distributor'
 
 module TagMaster
-  class Server
+  class Receiver
     include Logger
     
-    def initialize port
+    def initialize port, whitelist=nil
       @port = port
+      @whitelist = whitelist
     end
 
     def run
@@ -17,8 +20,8 @@ module TagMaster
         Thread.start(server.accept) do |client|    # wait for a client to connect
           sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
           connection = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Time.now}
-          if accept? connection
-            connected connection
+          if accept_connection? connection
+            open_connection connection
             while line = client.gets.strip
               begin
                 now = Time.now
@@ -28,9 +31,9 @@ module TagMaster
               end
             end
             client.close
-            closed connection
+            close_connection connection
           else
-            rejected connection
+            reject_connection connection
             client.close
           end
         end
@@ -40,46 +43,60 @@ module TagMaster
     end
 
     def process now, connection, line
-      event = Tagp.parse line, now
-      case event
-      when EventTag
-        event connection, event
-      when EventGone
-        gone connection, event
-      else
-        unknown now, connection, line
+      event = TagMaster::Tagp.parse line, now
+      if event
+        unless accept_event? event
+          return rejected connection, event
+        end
+        
+        case event
+        when EventTag
+          return event connection, event
+        when EventGone
+          return gone connection, event
+        end
       end
+      not_understood connection
     end
-
+  
+    def accept_event? event
+      return true if @whitelist == nil
+      @whitelist.include?(event.type) && @whitelist[event.type].include?(event.id_hex)
+    end
+  
     def starting
       log "[#{format_time Time.now}] Starting"
     end
 
-    def accept? connection
+    def accept_connection? connection
       true
     end
 
-    def connected connection
+    def open_connection connection
       log "#{format_connection(connection)} --> Connected #{connection[:hostname]}"
     end
 
-    def rejected connection
+    def reject_connection connection
       log "#{format_connection(connection)} --> Rejected #{connection[:hostname]}"
     end
 
-    def closed connection
+    def close_connection connection
       log "#{format_connection(connection)} --> Closed #{connection[:hostname]}"
     end
 
     def event connection, e
       log "#{format_event(connection, e)} --> EVNT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
     end
-
+    
     def gone connection, e
       log "#{format_event(connection, e)} --> GONE #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
     end
 
-    def unknown connection, now, e, line
+    def rejected connection, e
+      log "#{format_event(connection, e)} --> RCJT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
+    end
+
+    def not_understood connection
       #log "#{format_info now, remote_ip, remote_port, line} --> Not understood"
     end
 
@@ -95,7 +112,7 @@ module TagMaster
   end
 
 
-  class Backend < Server
+  class Server < Receiver
     def initialize settings
       @settings = settings
       raise "Settings is empty" unless @settings
@@ -106,20 +123,29 @@ module TagMaster
       raise "Retry delay settings is missing" unless @settings["retry_delay"]
       raise "Post timeout settings is missing" unless @settings["post_timeout"]
 
-      super @settings["port"]
+      super @settings["port"], @settings["whitelist"]
       @distributor = Distributor.new(@settings)
       @distributor.start
     end
-    
-    def accept? connection
+
+    def accept_connection? connection
       @settings["locations"].include? connection[:ip]
     end
 
     def event connection, e
       super connection, e
       location = @settings["locations"][connection[:ip]]
-      @distributor.enqueue [location,format_time(e.timestamp), e.type, e.id_hex ]
+      return unless location && e.id && e.timestamp
+      
+      if @settings["encryption_key"]
+        id = e.encrypted_id( @settings["encryption_key"] )
+      else
+        id = e.key
+      end
+      msg = { location:location, timestamp: e.timestamp.strftime('%Y-%m-%d %H:%M:%S.%L %z'), id:id }
+      @distributor.enqueue msg
     end
+
   end
   
 end

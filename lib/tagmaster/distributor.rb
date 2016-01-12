@@ -20,7 +20,7 @@ module TagMaster
         loop do
           begin
             event = @queue.pop
-            send( *event )
+            send( event )
           rescue StandardError => e
             err "[#{format_time Time.now}] Send queue error: #{e}"
           end
@@ -38,18 +38,17 @@ module TagMaster
     
     private
     
-    def send location, timestamp, type, hex_id
-      data = {'location' => location, 'type' => type, 'hex_id' => hex_id, 'timestamp' => timestamp.to_s}.to_json
-      @request.body = data
+    def send event
+      @request.body = event.to_json
       response = @http.request(@request)
       if response.code == "200"
         return true
       else
-        err "[#{format_time Time.now}] Could not distribute #{data} - Response code #{response.code}"
+        err "[#{format_time Time.now}] Could not distribute #{event} - Response code #{response.code}"
         return false
       end
     rescue StandardError => e
-      err "[#{format_time Time.now}] Could not distribute #{data} - #{e}"
+      err "[#{format_time Time.now}] Could not distribute #{event} - #{e}"
       false
     end
   end

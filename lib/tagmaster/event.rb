@@ -4,7 +4,8 @@ require 'digest/sha1'
 module TagMaster  
   class Event
 
-    attr_reader :type, :id, :status, :control, :user_data, :data, :metadata, :timestamp, :lag, :line
+    attr_reader :type, :id, :status, :control, :user_data, :data, :metadata
+    attr_reader :timestamp, :lag, :line, :type, :subtype, :formatbits
 
     def initialize h
       @data = h[:data]
@@ -14,12 +15,11 @@ module TagMaster
       
       lag = h[:now] - @timestamp
       @lag = (lag*1000.0).round / 1000.0   # ruby 1.8 does not support round(3)
-
       parse
     end
 
     def parse
-      return if @data.size < 2
+      raise TagError.new(@data,@formatbits) if @data.size < 2
       @formatbits = @data[1] & 0x3F
       if @formatbits == 0b111101
         parse_openlen
@@ -67,7 +67,7 @@ module TagMaster
       end
     end
 
-    def parse_scriptag
+    def parse_scripttag
       @subtype = "ScriptTag"
       @id = ((@data[1] & 0x3F) << 22) | (@data[2] << 14) | (@data[3] << 6) | ((@data[4] & 0xFC) >> 2)
       @control = ((@data[8] << 6) | (@data[9] >> 2)) & 0xFE
@@ -76,7 +76,7 @@ module TagMaster
     end
 
     def parse_mark28
-      raise TagError.new @data, @formatbits unless @data.size>=5      
+      raise TagError.new @data, @formatbits unless @data.size>=5
       @type = "Mark28"
       @id = ((@data[1] & 0x3f) << 22) | (@data[2] << 14) | (@data[3] << 6) | ((@data[4] & 0xfc) >> 2)    
     end

@@ -1,3 +1,6 @@
-tagp.yml
+tagmaster.yml
 *.log
+*.err
+*.csv
 .DS_Store
+log

@@ -21,8 +21,10 @@ require_relative '../lib/tagmaster/distributor'
 
 # load settings
 dir = Dir.pwd
-path = File.expand_path File.join(dir,'tagp.yml')
+
+path = ARGV.first || 'tagmaster.yml'
+path = File.expand_path File.join(dir,path)
 settings = YAML.load_file(path)
 
 # run until stopped
-TagMaster::Backend.new(settings).run
+TagMaster::Server.new(settings).run
