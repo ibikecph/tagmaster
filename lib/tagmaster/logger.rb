@@ -1,26 +1,16 @@
+require 'json'
+
 module TagMaster
   module Logger
-    def err str
-      $stderr.puts str
+    
+    def err hash
+      $stderr.puts hash.to_json
       $stderr.flush
     end
 
-    def log str
-      $stdout.puts str
+    def log hash
+      $stdout.puts hash.to_json
       $stdout.flush
-    end
-
-    def format_connection c
-      format_info(c[:now], c[:ip], c[:port])
-    end
-
-    def format_event c, e
-      format_info(c[:now], c[:ip], c[:port], e.line)
-    end
-
-    def format_info now, ip, port, line=""
-      ip_port = "#{ip}:#{port}"
-      "[#{format_time(now)}] #{ip_port.ljust 22} #{line}".ljust(115)
     end
 
     def format_time t

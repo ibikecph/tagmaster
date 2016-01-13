@@ -16,7 +16,6 @@
 require 'rubygems'
 require 'yaml'
 require_relative '../lib/tagmaster/server'
-require_relative '../lib/tagmaster/distributor'
 
 
 # load settings

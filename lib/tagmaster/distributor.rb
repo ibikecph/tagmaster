@@ -22,7 +22,13 @@ module TagMaster
             event = @queue.pop
             send( event )
           rescue StandardError => e
-            err "[#{format_time Time.now}] Send queue error: #{e}"
+            h = {
+                at:Time.now,
+                msg: 'send queue exception',
+                error:e.to_s,
+                backtrace:e.backtrace
+              }
+            err h
           end
         end
       end
@@ -41,14 +47,24 @@ module TagMaster
     def send event
       @request.body = event.to_json
       response = @http.request(@request)
-      if response.code == "200"
+       if response.code == "200"
         return true
       else
-        err "[#{format_time Time.now}] Could not distribute #{event} - Response code #{response.code}"
+        h = {
+            at:Time.now,
+            msg: 'distribute error',
+            response: response.code
+          }
+        err h
         return false
       end
     rescue StandardError => e
-      err "[#{format_time Time.now}] Could not distribute #{event} - #{e}"
+      h = {
+        at:Time.now,
+          msg: 'distribute exception',
+          error:e.to_s,
+        }
+      err h
       false
     end
   end

@@ -8,9 +8,16 @@ module TagMaster
   class Receiver
     include Logger
     
-    def initialize port, whitelist=nil
-      @port = port
-      @whitelist = whitelist
+    def initialize settings
+      @settings = settings
+
+      raise "Port settings is missing" unless @settings["port"]
+      #raise "Locations settings is missing" unless @settings["locations"]
+      #raise "Locations settings is empty" unless @settings["locations"].is_a?(Hash) && @settings["locations"].size>0
+
+      @port = settings["port"]
+      @whitelist = settings["whitelist"]
+      @locations = settings["locations"]
     end
 
     def run
@@ -18,134 +25,159 @@ module TagMaster
       server = TCPServer.new @port  # server on specific port
       loop do
         Thread.start(server.accept) do |client|    # wait for a client to connect
-          sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
-          connection = {ip:remote_ip, port:remote_port, hostname:remote_hostname, now:Time.now}
-          if accept_connection? connection
-            open_connection connection
-            while line = client.gets.strip
-              begin
-                now = Time.now
-                process now, connection, line
-              rescue StandardError => er
-                error connection, now, er, line
-              end
-            end
-            client.close
-            close_connection connection
-          else
-            reject_connection connection
-            client.close
+          begin
+            handle_client client
+          rescue StandardError => e
+            err at:Time.now, msg:'exception',error:e.to_s,backtrace:e.backtrace
           end
         end
       end
     ensure
       exiting
     end
-
-    def process now, connection, line
-      event = TagMaster::Tagp.parse line, now
-      if event
-        unless accept_event? event
-          return rejected connection, event
-        end
-        
-        case event
-        when EventTag
-          return event connection, event
-        when EventGone
-          return gone connection, event
+    
+    def handle_client client
+      sock_domain, remote_port, remote_hostname, remote_ip = client.peeraddr
+      connection = {ip:remote_ip, port:remote_port, hostname:remote_hostname, time:Time.now}
+      if accept_connection? connection
+        open_connection connection
+        listen_to_client client, connection
+        client.close
+        close_connection connection
+      else
+        reject_connection connection
+        client.close
+      end
+    end
+    
+    def listen_to_client client, connection
+      while line = client.gets
+        line.strip!
+        begin
+          now = Time.now
+          process now, connection, line
+        rescue StandardError => e
+          err info(now,connection).merge( msg:'exception', error:e.to_s, backtrace:e.backtrace, raw:line )
         end
       end
-      not_understood connection
+    end
+    
+    def process now, connection, line
+      e = TagMaster::Tagp.parse line, now
+      if e
+        unless accept_event? e
+          return discard now, connection, e
+        end        
+        case e
+        when EventTag
+          return event now, connection, e
+        when EventGone
+          return gone now, connection, e
+        end
+      end
+      not_understood now, connection
+    end
+
+    def starting
+      log at: Time.now, msg: 'starting', port:@port
+    end
+
+    def exiting
+      log at: Time.now, msg: 'exiting'
     end
   
+    def accept_connection? connection
+      if @locations
+        @locations.include? connection[:ip]
+      else
+        true
+      end
+    end
+
+    def info now, connection
+      {
+        at:now,
+        ip:connection[:ip],
+        port:connection[:port]      }
+    end
+    
+    def open_connection connection
+      log info(connection[:time],connection).merge( msg: 'connect',hostname: connection[:hostname] )
+    end
+
+    def reject_connection connection
+      log info(connection[:time],connection).merge( msg: 'reject',hostname: connection[:hostname] )
+    end
+
+    def close_connection connection
+      log info(connection[:time],connection).merge( msg: 'close',hostname: connection[:hostname] )
+    end
+
+    def event_info e
+      {
+        id: e.id,
+        type: e.type,
+        sub: e.subtype,
+        time: e.timestamp,
+        lag: e.lag,
+        raw: e.line
+      }
+    end
+
     def accept_event? event
       return true if @whitelist == nil
       @whitelist.include?(event.type) && @whitelist[event.type].include?(event.id_hex)
     end
-  
-    def starting
-      log "[#{format_time Time.now}] Starting"
+
+    def event now, connection, e
+      log info(now,connection).merge(msg:'event').merge(event_info(e))
     end
 
-    def accept_connection? connection
-      true
+    def gone now, connection, e
+      log info(now,connection).merge(msg:'gone').merge(event_info(e))
     end
 
-    def open_connection connection
-      log "#{format_connection(connection)} --> Connected #{connection[:hostname]}"
+    def discard now, connection, e
+      log info(now,connection).merge(msg:'discard').merge(event_info(e))
     end
 
-    def reject_connection connection
-      log "#{format_connection(connection)} --> Rejected #{connection[:hostname]}"
-    end
-
-    def close_connection connection
-      log "#{format_connection(connection)} --> Closed #{connection[:hostname]}"
-    end
-
-    def event connection, e
-      log "#{format_event(connection, e)} --> EVNT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
-    end
-    
-    def gone connection, e
-      log "#{format_event(connection, e)} --> GONE #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
-    end
-
-    def rejected connection, e
-      log "#{format_event(connection, e)} --> RJCT #{format_time(e.timestamp)} #{e.key.ljust 33} #{{lag:e.lag}.inspect}"
-    end
-
-    def not_understood connection
-      #log "#{format_info now, remote_ip, remote_port, line} --> Not understood"
-    end
-
-    def error connection, now, e, line
-      log "#{format_connection(connection)} --> Exception! #{e}"
-      log e.backtrace
-    end
-
-    def exiting
-      log "[#{format_time Time.now}] Exiting"
+    def not_understood now, connection
     end
 
   end
 
-
   class Server < Receiver
     def initialize settings
-      @settings = settings
+      super settings
       raise "Settings is empty" unless @settings
-      raise "Port settings is missing" unless @settings["port"]
-      raise "Locations settings is missing" unless @settings["locations"]
-      raise "Locations settings is empty" unless @settings["locations"].is_a?(Hash) && @settings["locations"].size>0
       raise "Endpoint settings is missing" unless @settings["endpoint"]
       raise "Retry delay settings is missing" unless @settings["retry_delay"]
       raise "Post timeout settings is missing" unless @settings["post_timeout"]
 
-      super @settings["port"], @settings["whitelist"]
       @distributor = Distributor.new(@settings)
       @distributor.start
     end
 
-    def accept_connection? connection
-      @settings["locations"].include? connection[:ip]
+    def accept_event? event
+      return true if @whitelist == nil
+      @whitelist.include?(event.type) && @whitelist[event.type].include?(event.id_hex)
     end
 
-    def event connection, e
-      super connection, e
+    def event now, connection, e
       location = @settings["locations"][connection[:ip]]
       return unless location && e.id && e.timestamp
-      
+
+      super now, connection, e
+
       if @settings["encryption_key"]
         id = e.encrypted_id( @settings["encryption_key"] )
       else
         id = e.key
       end
+  
       msg = { location:location, timestamp: e.timestamp.strftime('%Y-%m-%d %H:%M:%S.%L %z'), id:id }
       @distributor.enqueue msg
     end
-
   end
-  
+
 end

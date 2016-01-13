@@ -1,5 +1,5 @@
 port: 9999
-endpoint: "http://127.0.0.1:9998/events/create.json"
+endpoint: "http://127.0.0.1:3000/tags/create.json"
 retry_delay: 5
 post_timeout: 5
 encryption_key: 'my_secret_68jw38sjxb583sjdi'

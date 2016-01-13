@@ -15,52 +15,9 @@
 # lsof -p 667 | wc -l   # count open files
 
 require 'rubygems'
-require_relative 'server'
-
-PORT = 9999
-FILE = "ids.txt"
-
-
-module TagMaster
-  class Scanner < Server
-
-    def initialize port
-      super port
-      log "Warning: #{FILE} already exists, cannot save unique ids." if File.exists? FILE
-      @scanned = {}
-    end
-    
-    def event connection, event
-      #log "#{format_info(now, remote_ip, remote_port, line)} --> EVNT #{event.key.ljust(35)} lag:#{event.lag}"
-      unless @scanned[event.key]
-        @scanned[event.key] = 1
-        log "#{@scanned.size.to_s.ljust 8} #{event.key}"
-      else
-        @scanned[event.key] += 1
-      end
-    end
-
-    def starting
-      log "[#{format_time Time.now}] Looking for unique ids..."
-    end
-
-    def dump
-      str = ""
-      unless File.exists? FILE
-        File.open(FILE,'w') { |file| file.write str }
-      else
-        log "Cannot write list of ids, since file #{FILE} aready exists."
-        #@scanned.sort_by { |k,v| v }.reverse.each do |t|
-        #  k = t[0]
-        #  v = t[1]
-        #  str << "#{k[0].ljust 12} #{k[1].to_s(16).ljust 30} #{v.to_s.ljust 10}\n"      
-        #end
-      end
-      log str
-    end
-      
-  end
-end
+require 'yaml'
+require_relative '../lib/tagmaster/scanner'
 
 # run until stopped
-Tagp::Scanner.new(PORT).run
+path = ARGV.first || 'tags.txt'
+TagMaster::Scanner.new(9999,path).run
